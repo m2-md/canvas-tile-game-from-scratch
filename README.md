@@ -1,5 +1,9 @@
 # FIXED STARS — A Zero-Asset Pattern Game
 
+<!-- LINKS:BEGIN — üretildi: scripts/sync-repo-links.py · elle düzenleme -->
+**▶ [Live demo](https://m2-md.github.io/canvas-tile-game-from-scratch/)** · [Source](https://github.com/m2-md/canvas-tile-game-from-scratch)
+<!-- LINKS:END -->
+
 Working code for the article "A Game with Zero Assets: Procedural Graphics, Web
 Audio and a Pattern Game in Canvas". In a sky of orbs that change every second you
 try to find the **unchanging** ones. All of it is produced from code:
