@@ -11,14 +11,14 @@ import {
 } from "../src/game";
 import { loadScores, saveScore } from "../src/scores";
 
-describe("rng: tohum determinizmi", () => {
-  it("aynı tohum aynı diziyi üretir", () => {
+describe("rng: seed determinism", () => {
+  it("same seed produces same sequence", () => {
     const a = mulberry32(42);
     const b = mulberry32(42);
     for (let i = 0; i < 100; i++) expect(a()).toBe(b());
   });
 
-  it("farklı tohumlar farklı dizi üretir", () => {
+  it("different seeds produce different sequences", () => {
     const a = mulberry32(1);
     const b = mulberry32(2);
     const seqA = Array.from({ length: 10 }, a);
@@ -26,7 +26,7 @@ describe("rng: tohum determinizmi", () => {
     expect(seqA).not.toEqual(seqB);
   });
 
-  it("değerler [0,1) aralığında kalır", () => {
+  it("values remain in [0, 1) range", () => {
     const rng = mulberry32(7);
     for (let i = 0; i < 1000; i++) {
       const v = rng();
@@ -35,24 +35,24 @@ describe("rng: tohum determinizmi", () => {
     }
   });
 
-  it("int uçları dahil üretir", () => {
+  it("generates int including bounds", () => {
     const rng = mulberry32(3);
     const seen = new Set<number>();
     for (let i = 0; i < 500; i++) seen.add(int(rng, 1, 3));
     expect([...seen].sort()).toEqual([1, 2, 3]);
   });
 
-  it("shuffle bir permütasyondur (eleman kaybetmez)", () => {
+  it("shuffle is a permutation (loses no elements)", () => {
     const rng = mulberry32(5);
     const arr = [1, 2, 3, 4, 5, 6, 7, 8];
     const mixed = shuffle(rng, arr);
     expect([...mixed].sort((a, b) => a - b)).toEqual(arr);
-    expect(arr).toEqual([1, 2, 3, 4, 5, 6, 7, 8]); // orijinal bozulmaz
+    expect(arr).toEqual([1, 2, 3, 4, 5, 6, 7, 8]); // original is not mutated
   });
 });
 
-describe("makeBoard: tahta kurulumu", () => {
-  it("hücre sayısı kadar benzersiz tohum üretir", () => {
+describe("makeBoard: board setup", () => {
+  it("generates as many unique seeds as cell count", () => {
     const rng = mulberry32(11);
     const spec = LEVELS[0]; // 4x5, 2 eternal
     const board = makeBoard(rng, spec);
@@ -60,7 +60,7 @@ describe("makeBoard: tahta kurulumu", () => {
     expect(new Set(board.seeds).size).toBe(20);
   });
 
-  it("doğru sayıda benzersiz, geçerli eternal noktası seçer", () => {
+  it("selects correct number of unique, valid eternal spots", () => {
     const rng = mulberry32(13);
     for (const spec of LEVELS) {
       const board = makeBoard(rng, spec);
@@ -74,24 +74,24 @@ describe("makeBoard: tahta kurulumu", () => {
   });
 });
 
-describe("reroll: gökyüzü değişir, sabit yıldızlar kalır", () => {
-  it("eternal tohumları korur, diğerlerini değiştirir", () => {
+describe("reroll: sky changes, fixed stars remain", () => {
+  it("preserves eternal seeds, changes the others", () => {
     const rng = mulberry32(17);
     const board = makeBoard(rng, LEVELS[0]);
     const before = [...board.seeds];
     reroll(rng, board);
     board.seeds.forEach((seed, i) => {
       if (board.eternalSpots.includes(i)) {
-        expect(seed).toBe(before[i]); // sabit yıldız: aynı
+        expect(seed).toBe(before[i]); // fixed star: same
       } else {
-        expect(seed).not.toBe(before[i]); // gökyüzü: değişti
+        expect(seed).not.toBe(before[i]); // sky: changed
       }
     });
   });
 });
 
-describe("guess: tahmin mantığı", () => {
-  it("doğru → found'a eklenir; hepsi bulununca done", () => {
+describe("guess: guess logic", () => {
+  it("correct -> added to found; done when all found", () => {
     const rng = mulberry32(19);
     const board = makeBoard(rng, LEVELS[0]);
     const found = new Set<number>();
@@ -104,7 +104,7 @@ describe("guess: tahmin mantığı", () => {
     expect(r2).toEqual({ correct: true, alreadyFound: false, done: true });
   });
 
-  it("aynı eternal'e ikinci tıklama tekrar sayılmaz", () => {
+  it("clicking same eternal twice does not count again", () => {
     const rng = mulberry32(23);
     const board = makeBoard(rng, LEVELS[0]);
     const found = new Set<number>();
@@ -115,7 +115,7 @@ describe("guess: tahmin mantığı", () => {
     expect(found.size).toBe(1);
   });
 
-  it("yanlış hücre correct=false döner, found büyümez", () => {
+  it("wrong cell returns correct=false, found does not grow", () => {
     const rng = mulberry32(29);
     const board = makeBoard(rng, LEVELS[0]);
     const found = new Set<number>();
@@ -128,34 +128,34 @@ describe("guess: tahmin mantığı", () => {
   });
 });
 
-describe("layout: ızgara matematiği", () => {
+describe("layout: grid math", () => {
   const spec = LEVELS[0]; // 4x5
   const l = computeLayout(spec, 800, 1200, 150, 120);
 
-  it("ızgara ekrana sığar", () => {
+  it("grid fits screen", () => {
     expect(l.ox).toBeGreaterThanOrEqual(0);
     expect(l.oy).toBeGreaterThanOrEqual(150);
     expect(l.ox + l.cell * l.cols).toBeLessThanOrEqual(800);
     expect(l.oy + l.cell * l.rows).toBeLessThanOrEqual(1200 - 120 + 0.001);
   });
 
-  it("cellAt, cellCenter'ın tersidir (her hücre için)", () => {
+  it("cellAt is the inverse of cellCenter (for every cell)", () => {
     for (let i = 0; i < spec.cols * spec.rows; i++) {
       const { x, y } = cellCenter(l, i);
       expect(cellAt(l, x, y)).toBe(i);
     }
   });
 
-  it("ızgara dışı -1 döner", () => {
-    expect(cellAt(l, 1, 1)).toBe(-1); // sol üst köşe (başlık alanı)
-    expect(cellAt(l, 799, 1199)).toBe(-1); // sağ alt köşe (UI alanı)
+  it("returns -1 outside grid", () => {
+    expect(cellAt(l, 1, 1)).toBe(-1); // top-left corner (header area)
+    expect(cellAt(l, 799, 1199)).toBe(-1); // bottom-right corner (UI area)
     expect(cellAt(l, -5, 500)).toBe(-1);
   });
 });
 
-describe("scores: localStorage skor tablosu", () => {
+describe("scores: localStorage leaderboard", () => {
   beforeEach(() => {
-    // Node ortamında localStorage yok — minik bir taklit yeterli
+    // In Node environment localStorage does not exist — minimal mock is sufficient
     const store = new Map<string, string>();
     globalThis.localStorage = {
       getItem: (k: string) => store.get(k) ?? null,
@@ -167,21 +167,21 @@ describe("scores: localStorage skor tablosu", () => {
     } as Storage;
   });
 
-  it("skorlar küçükten büyüğe sıralanır", () => {
+  it("scores are sorted ascending", () => {
     saveScore(120);
     saveScore(80);
     const scores = saveScore(100);
     expect(scores).toEqual([80, 100, 120]);
   });
 
-  it("en fazla 10 skor tutulur", () => {
+  it("keeps at most 10 scores", () => {
     for (let i = 1; i <= 15; i++) saveScore(i * 10);
     expect(loadScores()).toHaveLength(10);
-    expect(loadScores()[0]).toBe(10); // en iyiler kalır
+    expect(loadScores()[0]).toBe(10); // keeps the best
   });
 
-  it("bozuk veri oyunu çökertmez", () => {
-    localStorage.setItem("sabit-yildizlar-scores", "{bozuk json");
+  it("corrupted data does not crash game", () => {
+    localStorage.setItem("sabit-yildizlar-scores", "{invalid json");
     expect(loadScores()).toEqual([]);
   });
 });

@@ -1,7 +1,7 @@
 {
   "name": "canvas-tile-game-from-scratch",
   "version": "1.0.0",
-  "description": "SABİT YILDIZLAR — sıfır asset'li prosedürel desen oyunu: Canvas + Web Audio + localStorage",
+  "description": "Zero-asset procedural pattern puzzle game built purely with HTML5 Canvas, Web Audio API procedural sound synthesis, and local storage persistence.",
   "type": "module",
   "license": "MIT",
   "scripts": {

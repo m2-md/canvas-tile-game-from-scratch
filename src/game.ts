@@ -1,11 +1,11 @@
-// Saf oyun mantığı — DOM yok, canvas yok, yan etki yok.
-// Çizim çizer, mantık bilir: bu dosya testlerde başsız (headless) çalışır.
+// Pure game logic — no DOM, no canvas, no side effects.
+// Renderer draws, logic knows: runs headless in unit tests.
 import { type Rng, shuffle } from "./rng";
 
 export interface LevelSpec {
   cols: number;
   rows: number;
-  eternals: number; // bulunacak sabit yıldız sayısı
+  eternals: number; // number of fixed stars to find
 }
 
 export const LEVELS: LevelSpec[] = [
@@ -16,14 +16,14 @@ export const LEVELS: LevelSpec[] = [
   { cols: 7, rows: 9, eternals: 6 },
 ];
 
-export const PENALTY = 10; // yanlış tahmin: +10 saniye
+export const PENALTY = 10; // wrong guess: +10 seconds
 
 export interface Board {
-  seeds: number[]; // her hücrenin orb tohumu
-  eternalSpots: number[]; // değişmeyen hücrelerin indexleri
+  seeds: number[]; // orb seed for each cell
+  eternalSpots: number[]; // indices of unchanging cells
 }
 
-// Yeni tahta: her hücreye benzersiz tohum, rastgele hücrelere eternal damgası
+// New board: unique seed per cell, random cells designated as eternal
 export function makeBoard(rng: Rng, spec: LevelSpec): Board {
   const cellCount = spec.cols * spec.rows;
   const used = new Set<number>();
@@ -40,7 +40,7 @@ export function makeBoard(rng: Rng, spec: LevelSpec): Board {
   return { seeds, eternalSpots };
 }
 
-// Gökyüzünü değiştir: eternaller kalır, geri kalan her hücre yeni tohum alır
+// Reroll sky: eternals remain, every other cell gets a new seed
 export function reroll(rng: Rng, board: Board): void {
   board.seeds = board.seeds.map((s, i) =>
     board.eternalSpots.includes(i) ? s : Math.floor(rng() * 1e9),
@@ -50,7 +50,7 @@ export function reroll(rng: Rng, board: Board): void {
 export interface GuessResult {
   correct: boolean;
   alreadyFound: boolean;
-  done: boolean; // seviyedeki tüm eternaller bulundu mu?
+  done: boolean; // are all eternals in the level found?
 }
 
 export function guess(
@@ -68,17 +68,17 @@ export function guess(
   };
 }
 
-// --- Izgara yerleşimi ve tek satırlık "çarpışma testi" ----------------------
+// --- Grid layout and single-line "collision test" ----------------------
 
 export interface Layout {
   cols: number;
   rows: number;
-  cell: number; // kare hücre kenarı (px)
-  ox: number; // ızgaranın sol üst köşesi
+  cell: number; // square cell size (px)
+  ox: number; // grid top-left origin x
   oy: number;
 }
 
-// Ekrana sığan en büyük kare hücreyi bul, ızgarayı ortala
+// Find largest square cell fitting available screen area, center the grid
 export function computeLayout(
   spec: LevelSpec,
   W: number,
@@ -98,8 +98,8 @@ export function computeLayout(
   };
 }
 
-// Piksel → hücre index. Izgara dışıysa -1.
-// Çarpışma testinin en ucuz hali: iki bölme, bir çarpma.
+// Pixel -> cell index. Returns -1 if outside grid.
+// Cheapest collision check: two divisions, one multiplication.
 export function cellAt(l: Layout, x: number, y: number): number {
   const cx = Math.floor((x - l.ox) / l.cell);
   const cy = Math.floor((y - l.oy) / l.cell);
@@ -107,7 +107,7 @@ export function cellAt(l: Layout, x: number, y: number): number {
   return cy * l.cols + cx;
 }
 
-// Hücre index → merkez noktası (çizim için)
+// Cell index -> center coordinate (for rendering)
 export function cellCenter(l: Layout, i: number): { x: number; y: number } {
   return {
     x: l.ox + (i % l.cols) * l.cell + l.cell / 2,

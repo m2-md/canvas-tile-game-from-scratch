@@ -1,60 +1,62 @@
-# SABİT YILDIZLAR — Sıfır Asset'li Desen Oyunu
+# FIXED STARS — A Zero-Asset Pattern Game
 
-"Sıfır Asset'li Oyun: Canvas'ta Prosedürel Grafik, Web Audio ve Bir Desen Oyunu"
-makalesinin çalışan kodu. Her saniye değişen bir orb gökyüzünde **değişmeyenleri**
-bulmaya çalışırsınız. Tamamı koddan üretilir:
+Working code for the article "A Game with Zero Assets: Procedural Graphics, Web
+Audio and a Pattern Game in Canvas". In a sky of orbs that change every second you
+try to find the **unchanging** ones. All of it is produced from code:
 
-- **Görseller:** `src/orb.ts` — tohumlu (seeded) prosedürel orblar; resim dosyası yok
-- **Sesler:** `src/audio.ts` — Web Audio osilatörleri; mp3 yok
-- **Skorlar:** `src/scores.ts` — localStorage; sunucu yok
-- Üretim build'i: **JS 3.83 KB gzip** (`npm run build` ile doğrula)
+- **Visuals:** `src/orb.ts` — seeded procedural orbs; no image files
+- **Sounds:** `src/audio.ts` — Web Audio oscillators; no mp3
+- **Scores:** `src/scores.ts` — localStorage; no server
+- Production build: **JS 3.83 KB gzip** (verify with `npm run build`)
 
-## Kurulum ve çalıştırma
+## Setup and running
 
 ```bash
 npm install
-npm run dev     # http://localhost:5173 (veya Vite'ın verdiği port)
+npm run dev     # http://localhost:5173 (or whatever port Vite gives you)
 ```
 
-**Nasıl oynanır:** Dokun/başla → ızgaradaki orblar her saniye değişir, birkaçı hiç
-değişmez (sabit yıldızlar). Onlara tıkla. Yanlış tahmin süreye **+10 sn** ekler.
-5 seviye; ızgara 4×5'ten 7×9'a büyür. En düşük süreler skor tablosuna yazılır.
-Sol alt köşe: ses aç/kapa.
+**How to play:** Tap/start → the orbs in the grid change every second, a few never
+change at all (the fixed stars). Click them. A wrong guess adds **+10 s** to your
+time. 5 levels; the grid grows from 4×5 to 7×9. The lowest times are written to the
+scoreboard. Bottom left corner: sound on/off.
 
-## Test
+## Tests
 
 ```bash
-npm test        # 17 birim testi
+npm test        # 17 unit tests
 ```
 
-Testler saf mantığı doğrular: rng determinizmi, Fisher-Yates permütasyonu,
-tahta kurulumu (benzersiz tohumlar, geçerli eternal noktaları), `reroll`
-sözleşmesi (eternal kalır, diğerleri değişir), tahmin akışı, ızgara matematiği
-(`cellAt` ↔ `cellCenter` terslik), localStorage skorları (bozuk veri dahil).
+The tests verify the pure logic: rng determinism, Fisher-Yates permutation, board
+setup (unique seeds, valid eternal points), the `reroll` contract (the eternals
+stay, the others change), the guess flow, grid math (`cellAt` ↔ `cellCenter`
+inverse), localStorage scores (including corrupt data).
 
-## Dosya yapısı
+## File layout
 
 ```
 src/
-  rng.ts      # mulberry32 + tohumlu yardımcılar (range, int, pick, shuffle)
-  orb.ts      # prosedürel orb üreteci (4 motif: halka, ışın, spiral, uydu)
-  game.ts     # saf oyun mantığı: makeBoard, reroll, guess, layout/cellAt
-  audio.ts    # osilatör sentezi: correct/wrong/levelUp/gameOver + mute
-  scores.ts   # localStorage skor tablosu
-  main.ts     # durum makinesi, çizim, girdi, tam ekran canvas
+  rng.ts      # mulberry32 + seeded helpers (range, int, pick, shuffle)
+  orb.ts      # procedural orb generator (4 motifs: ring, ray, spiral, satellite)
+  game.ts     # pure game logic: makeBoard, reroll, guess, layout/cellAt
+  audio.ts    # oscillator synthesis: correct/wrong/levelUp/gameOver + mute
+  scores.ts   # localStorage scoreboard
+  main.ts     # state machine, drawing, input, fullscreen canvas
 tests/
   game.test.ts
 ```
 
-## Alınan dersler (makalede de anlatılır)
+## Lessons learned (also told in the article)
 
-- `sort(() => Math.random() - 0.5)` adil karıştırmaz — Fisher-Yates kullanın.
-- Web Audio'da üstel sönüm zarfı olmadan her sesin sonunda "klik" duyulur.
-- Dev sunucusunun HMR'ı entry modülünü sayfa yenilenmeden ikinci kez
-  çalıştırabilir → iki oyun döngüsü aynı canvas'a çizer. `main.ts`'teki
-  `window.__stopGame` koruması bunun için var.
-- localStorage okurken `try/catch` şart: tek bozuk kayıt menüyü çökertir.
+- `sort(() => Math.random() - 0.5)` does not shuffle fairly — use Fisher-Yates.
+- Without an exponential decay envelope in Web Audio you hear a "click" at the end
+  of every sound.
+- The dev server's HMR can run the entry module a second time without reloading the
+  page → two game loops draw to the same canvas. The `window.__stopGame` guard in
+  `main.ts` exists for this.
+- `try/catch` is mandatory when reading localStorage: a single corrupt record
+  crashes the menu.
 
-## Lisans
+## License
 
 MIT

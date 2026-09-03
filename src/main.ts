@@ -1,5 +1,5 @@
-// SABİT YILDIZLAR — değişen gökyüzünde değişmeyeni bul.
-// Sıfır asset: görseller orb.ts'te, sesler audio.ts'te, kayıt localStorage'da.
+// FIXED STARS — find the unchanging in an ever-shifting sky.
+// zero assets: visuals in orb.ts, audio in audio.ts, persistence in localStorage.
 import { mulberry32 } from "./rng";
 import { drawOrb } from "./orb";
 import {
@@ -17,10 +17,9 @@ import {
 import { sfx, toggleMute, muted } from "./audio";
 import { loadScores, saveScore } from "./scores";
 
-// --- Çift yükleme koruması ---------------------------------------------------
-// Dev sunucusu (HMR) bu modülü sayfa yenilenmeden ikinci kez çalıştırabilir.
-// O zaman iki oyun aynı canvas'a çizer, iki sayaç birden işler — kaos.
-// Yeni kopya başlarken eskisini durduruyoruz: döngü biter, dinleyiciler iptal.
+// --- Double-loading protection ---------------------------------------------------
+// Dev server (HMR) may re-run this module without full reload.
+// Stop the old copy before starting new one: cancel listeners, stop loop.
 const w = window as unknown as { __stopGame?: () => void };
 w.__stopGame?.();
 let running = true;
@@ -31,7 +30,7 @@ w.__stopGame = () => {
 };
 const on = { signal: aborter.signal };
 
-// --- Tam ekran canvas (önceki oyundan öğrendiğimiz desen) -------------------
+// --- Fullscreen canvas --------------------------------------------------------
 let W = window.innerWidth;
 let H = window.innerHeight;
 
@@ -47,12 +46,12 @@ window.addEventListener(
     H = window.innerHeight;
     canvas.width = W;
     canvas.height = H;
-    orbCache.clear(); // hücre boyutu değişti, orblar yeniden çizilsin
+    orbCache.clear(); // cell size changed, re-render orbs
   },
   on,
 );
 
-// --- Oyun durumu -------------------------------------------------------------
+// --- Game state -------------------------------------------------------------
 type State = "menu" | "playing" | "showcase" | "over";
 let state: State = "menu";
 
@@ -61,12 +60,12 @@ const rng = mulberry32(Date.now() >>> 0);
 let level = 0;
 let board: Board;
 let found = new Set<number>();
-let elapsed = 0; // toplam süre (sn) — cezalar dahil
-let rerollClock = 0; // gökyüzü değişim sayacı
+let elapsed = 0; // total time (s) — including penalties
+let rerollClock = 0; // sky shift timer
 let showcaseClock = 0;
 let scores = loadScores();
 
-// Doğru tahminde büyüyen halka animasyonları
+// Expanding pulse animations on correct guess
 interface Pulse {
   cell: number;
   t: number;
@@ -92,7 +91,7 @@ function startGame() {
   startLevel();
 }
 
-// --- Orb önbelleği: seed → çizilmiş canvas -----------------------------------
+// --- Orb cache: seed -> rendered canvas -----------------------------------
 const orbCache = new Map<number, HTMLCanvasElement>();
 
 function orb(seed: number, size: number): HTMLCanvasElement {
@@ -104,7 +103,7 @@ function orb(seed: number, size: number): HTMLCanvasElement {
   return c;
 }
 
-// --- Girdi -------------------------------------------------------------------
+// --- Input -------------------------------------------------------------------
 canvas.addEventListener(
   "pointerdown",
   (e) => {
@@ -112,7 +111,7 @@ canvas.addEventListener(
     const x = ((e.clientX - rect.left) / rect.width) * W;
     const y = ((e.clientY - rect.top) / rect.height) * H;
 
-    // Sol alt köşe: her durumda mute
+    // Bottom-left corner: toggle mute in any state
     if (x < 80 && y > H - 80) {
       toggleMute();
       return;
@@ -139,13 +138,13 @@ canvas.addEventListener(
       }
     } else if (!result.correct) {
       sfx.wrong();
-      elapsed += PENALTY; // yanlış tahmin: süreye +10
+      elapsed += PENALTY; // wrong guess: +10 penalty
     }
   },
   on,
 );
 
-// --- Güncelleme --------------------------------------------------------------
+// --- Update --------------------------------------------------------------
 function update(dt: number) {
   for (const p of pulses) p.t += dt;
   pulses = pulses.filter((p) => p.t < 0.8);
@@ -155,7 +154,7 @@ function update(dt: number) {
     rerollClock += dt;
     if (rerollClock >= 1) {
       rerollClock = 0;
-      reroll(rng, board); // gökyüzü değişir, sabit yıldızlar kalır
+      reroll(rng, board); // sky shifts, fixed stars remain
       orbCache.clear();
     }
   }
@@ -175,7 +174,7 @@ function update(dt: number) {
   }
 }
 
-// --- Çizim -------------------------------------------------------------------
+// --- Draw -------------------------------------------------------------------
 function titleGradient(size: number): CanvasGradient {
   const g = ctx.createLinearGradient(0, H * 0.04, 0, H * 0.04 + size);
   g.addColorStop(0, "#facc15");
@@ -188,12 +187,12 @@ function drawTitle() {
   ctx.font = `bold ${size}px system-ui, sans-serif`;
   ctx.textAlign = "center";
   ctx.fillStyle = titleGradient(size);
-  ctx.fillText("SABİT YILDIZLAR", W / 2, H * 0.09);
+  ctx.fillText("FIXED STARS", W / 2, H * 0.09);
 }
 
 function drawMute() {
   ctx.fillStyle = muted ? "#57534e" : "#f59e0b";
-  ctx.beginPath(); // basit hoparlör: gövde + koni
+  ctx.beginPath(); // simple speaker: body + cone
   ctx.moveTo(24, H - 52);
   ctx.lineTo(36, H - 52);
   ctx.lineTo(52, H - 64);
@@ -220,7 +219,7 @@ function drawGrid() {
     ctx.drawImage(orb(seed, size), x - size / 2, y - size / 2);
   });
 
-  // Bulunan sabit yıldızlar: kesikli beyaz halka
+  // Found fixed stars: dashed white ring
   ctx.setLineDash([8, 6]);
   ctx.strokeStyle = "rgba(255,255,255,0.9)";
   ctx.lineWidth = 3;
@@ -232,7 +231,7 @@ function drawGrid() {
   }
   ctx.setLineDash([]);
 
-  // Doğru tahmin dalgası: büyüyüp sönen halka
+  // Correct guess ripple: expanding fading ring
   for (const p of pulses) {
     const { x, y } = cellCenter(l, p.cell);
     ctx.globalAlpha = 1 - p.t / 0.8;
@@ -250,9 +249,9 @@ function drawBottomUI() {
   ctx.font = `bold ${Math.min(W * 0.055, 30)}px system-ui, sans-serif`;
   ctx.textAlign = "center";
   ctx.fillStyle = titleGradient(30);
-  ctx.fillText(`BUL: ${spec.eternals - found.size}`, W / 2, H - 36);
+  ctx.fillText(`FIND: ${spec.eternals - found.size}`, W / 2, H - 36);
 
-  // Sağ altta süre kutusu
+  // Time box in bottom right
   ctx.fillStyle = "#f59e0b";
   const tw = 110;
   ctx.beginPath();
@@ -274,15 +273,15 @@ function drawMenu() {
   drawTitle();
   ctx.font = "bold 22px system-ui, sans-serif";
   ctx.fillStyle = "#d6d3d1";
-  ctx.fillText("Gökyüzü her saniye değişiyor.", W / 2, H * 0.2);
-  ctx.fillText("Değişmeyen yıldızları bul!", W / 2, H * 0.2 + 30);
+  ctx.fillText("The sky shifts every second.", W / 2, H * 0.2);
+  ctx.fillText("Find the unchanging stars!", W / 2, H * 0.2 + 30);
 
   ctx.fillStyle = "#a8a29e";
   ctx.font = "20px monospace";
   if (scores.length) {
-    ctx.fillText("EN İYİ SÜRELER", W / 2, H * 0.34);
+    ctx.fillText("BEST TIMES", W / 2, H * 0.34);
     drawCenteredList(
-      scores.map((s, i) => `${i + 1}.  ${s} sn`),
+      scores.map((s, i) => `${i + 1}.  ${s} s`),
       H * 0.34 + 36,
       30,
     );
@@ -290,7 +289,7 @@ function drawMenu() {
 
   ctx.fillStyle = titleGradient(40);
   ctx.font = "bold 40px system-ui, sans-serif";
-  ctx.fillText("BAŞLAMAK İÇİN DOKUN", W / 2, H * 0.82);
+  ctx.fillText("TAP TO START", W / 2, H * 0.82);
   drawMute();
 }
 
@@ -298,9 +297,9 @@ function drawShowcase() {
   drawTitle();
   ctx.fillStyle = "#d6d3d1";
   ctx.font = "bold 24px system-ui, sans-serif";
-  ctx.fillText(`Seviye ${level + 1} tamam!`, W / 2, H * 0.22);
+  ctx.fillText(`Level ${level + 1} complete!`, W / 2, H * 0.22);
 
-  // Bulunan sabit yıldızları büyük göster — küçük bir ödül anı
+  // Showcase found fixed stars — small reward moment
   const size = Math.min(W / (board.eternalSpots.length + 1), H * 0.2);
   const total = board.eternalSpots.length * (size + 16) - 16;
   board.eternalSpots.forEach((spot, i) => {
@@ -317,20 +316,20 @@ function drawOver() {
   drawTitle();
   ctx.fillStyle = "#d6d3d1";
   ctx.font = "bold 28px system-ui, sans-serif";
-  ctx.fillText(`Bitirdin! Süren: ${Math.round(elapsed)} sn`, W / 2, H * 0.22);
+  ctx.fillText(`Finished! Time: ${Math.round(elapsed)} s`, W / 2, H * 0.22);
 
   ctx.fillStyle = "#a8a29e";
   ctx.font = "20px monospace";
-  ctx.fillText("EN İYİ SÜRELER", W / 2, H * 0.32);
+  ctx.fillText("BEST TIMES", W / 2, H * 0.32);
   drawCenteredList(
-    scores.map((s, i) => `${i + 1}.  ${s} sn`),
+    scores.map((s, i) => `${i + 1}.  ${s} s`),
     H * 0.32 + 36,
     30,
   );
 
   ctx.fillStyle = titleGradient(36);
   ctx.font = "bold 36px system-ui, sans-serif";
-  ctx.fillText("TEKRAR OYNA", W / 2, H * 0.85);
+  ctx.fillText("PLAY AGAIN", W / 2, H * 0.85);
   drawMute();
 }
 
@@ -348,11 +347,11 @@ function draw() {
   }
 }
 
-// --- Oyun döngüsü ------------------------------------------------------------
+// --- Game loop ------------------------------------------------------------
 let last = performance.now();
 
 function frame(now: number) {
-  if (!running) return; // eski kopya sessizce ölür (çift yükleme koruması)
+  if (!running) return; // old instance quietly dies (double-load protection)
   const dt = Math.min((now - last) / 1000, 1 / 30);
   last = now;
   update(dt);

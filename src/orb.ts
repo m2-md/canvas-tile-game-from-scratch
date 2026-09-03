@@ -1,5 +1,5 @@
-// Bir sayıdan bir orb: aynı tohum (seed) her zaman aynı orbu üretir.
-// Görsel dosyası yok — her orb, çizim komutlarına dönüşmüş bir sayıdır.
+// One number, one orb: the same seed always produces the same orb.
+// No image files — every orb is a number transformed into canvas draw commands.
 import { type Rng, mulberry32, range, int, pick } from "./rng";
 
 type Motif = (
@@ -9,7 +9,7 @@ type Motif = (
   hue: number,
 ) => void;
 
-// Motif 1: eş merkezli halkalar
+// Motif 1: concentric rings
 function rings(
   ctx: CanvasRenderingContext2D,
   rng: Rng,
@@ -26,7 +26,7 @@ function rings(
   }
 }
 
-// Motif 2: merkezden dışa ışınlar
+// Motif 2: radial spokes from center
 function spokes(
   ctx: CanvasRenderingContext2D,
   rng: Rng,
@@ -47,7 +47,7 @@ function spokes(
   }
 }
 
-// Motif 3: dışa açılan spiral
+// Motif 3: expanding spiral
 function spiral(
   ctx: CanvasRenderingContext2D,
   rng: Rng,
@@ -69,7 +69,7 @@ function spiral(
   ctx.stroke();
 }
 
-// Motif 4: yörüngedeki uydu noktaları
+// Motif 4: orbiting satellite dots
 function satellites(
   ctx: CanvasRenderingContext2D,
   rng: Rng,
@@ -104,9 +104,9 @@ export function drawOrb(seed: number, size: number): HTMLCanvasElement {
   const r = half * 0.92;
   const hue = int(rng, 0, 359);
 
-  ctx.translate(half, half); // merkez = (0,0): motifler basitleşir
+  ctx.translate(half, half); // center = (0,0): simplifies motifs
 
-  // Cam küre: parlak çekirdekten karanlığa sönen radial gradient
+  // Glass sphere: radial gradient fading from bright core to dark perimeter
   const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
   glow.addColorStop(0, `hsl(${hue} 100% 72%)`);
   glow.addColorStop(0.35, `hsl(${hue} 90% 40% / 0.9)`);
@@ -116,13 +116,13 @@ export function drawOrb(seed: number, size: number): HTMLCanvasElement {
   ctx.arc(0, 0, r, 0, Math.PI * 2);
   ctx.fill();
 
-  // Küre dışına taşma yok: motifler daireye kırpılır
+  // No leaking outside sphere: clip motifs to circle
   ctx.clip();
 
-  // Işık toplansın: üst üste binen çizgiler parlaklaşır (neon hissi)
+  // Additive blending: overlapping lines glow brighter (neon look)
   ctx.globalCompositeOperation = "lighter";
 
-  // Her orb 2-3 rastgele motif taşır — kombinasyon patlaması benzersizliği getirir
+  // Each orb carries 2-3 random motifs — combinatorial explosion ensures uniqueness
   const layerCount = int(rng, 2, 3);
   for (let i = 0; i < layerCount; i++) {
     pick(rng, MOTIFS)(ctx, rng, r, hue);

@@ -1,5 +1,5 @@
-// Tohum (seed) → her zaman aynı rastgele dizi.
-// Oyunun tamamı bu fikre yaslanır: aynı tohumdan hep aynı orb.
+// Seed -> identical pseudo-random sequence every time.
+// The entire game relies on this idea: same seed produces the exact same orb.
 export type Rng = () => number;
 
 export function mulberry32(seed: number): Rng {
@@ -22,7 +22,7 @@ export const int = (rng: Rng, min: number, max: number): number =>
 export const pick = <T>(rng: Rng, arr: T[]): T =>
   arr[Math.floor(rng() * arr.length)];
 
-// Fisher-Yates: her permütasyon eşit olasılıkla (sort(random) hilesi değil!)
+// Fisher-Yates: all permutations equally likely (not the flawed sort(random) trick!)
 export function shuffle<T>(rng: Rng, arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {

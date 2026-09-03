@@ -1,5 +1,5 @@
-// Ses dosyası yok: her ses, anında üretilen bir osilatör.
-// Bir mp3 "dondurulmuş ses"tir; burada tarifin kendisini tutuyoruz.
+// No sound files: every sound is an oscillator synthesized on the fly.
+// An mp3 is "frozen sound"; here we keep the recipe itself.
 let audioCtx: AudioContext | null = null;
 
 export let muted = false;
@@ -15,14 +15,14 @@ function tone(
   vol = 0.2,
 ) {
   if (muted) return;
-  audioCtx ??= new AudioContext(); // ilk etkileşimde kur (tarayıcı kuralı)
+  audioCtx ??= new AudioContext(); // create on first user interaction (browser policy)
   const t0 = audioCtx.currentTime;
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.type = type;
   osc.frequency.value = freq;
   gain.gain.setValueAtTime(vol, t0);
-  gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur); // doğal sönüm
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur); // natural decay
   osc.connect(gain).connect(audioCtx.destination);
   osc.start(t0);
   osc.stop(t0 + dur);
@@ -31,13 +31,13 @@ function tone(
 export const sfx = {
   correct() {
     tone(660, 0.15);
-    tone(990, 0.3, "sine", 0.12); // beşli aralık: "doğru" hissi
+    tone(990, 0.3, "sine", 0.12); // perfect fifth: "correct" sensation
   },
   wrong() {
-    tone(110, 0.35, "sawtooth", 0.22); // kalın testere: "olmadı"
+    tone(110, 0.35, "sawtooth", 0.22); // low sawtooth: "wrong"
   },
   levelUp() {
-    // yükselen majör arpej — küçük bir fanfar
+    // rising major arpeggio — celebratory fanfare
     [523, 659, 784, 1047].forEach((f, i) =>
       setTimeout(() => tone(f, 0.2, "triangle"), i * 90),
     );
