@@ -4,6 +4,9 @@
 **▶ [Live demo](https://m2-md.github.io/canvas-tile-game-from-scratch/)** · [Source](https://github.com/m2-md/canvas-tile-game-from-scratch)
 <!-- LINKS:END -->
 
+> A zero-asset procedural pattern puzzle game built purely with HTML5 Canvas, Web Audio
+> API procedural sound synthesis, and local storage persistence.
+
 Working code for the article "A Game with Zero Assets: Procedural Graphics, Web
 Audio and a Pattern Game in Canvas". In a sky of orbs that change every second you
 try to find the **unchanging** ones. All of it is produced from code:
@@ -60,6 +63,14 @@ tests/
   `main.ts` exists for this.
 - `try/catch` is mandatory when reading localStorage: a single corrupt record
   crashes the menu.
+
+## Tech stack
+
+- TypeScript
+- Vite
+- Vitest
+- HTML5 Canvas 2D
+- Web Audio API (procedural sound, no audio files)
 
 ## License
 
